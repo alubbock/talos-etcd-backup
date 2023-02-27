@@ -21,19 +21,12 @@ spec:
               - /data/etcd.snapshot
             env:
               - name: CP_NODE_IP
-                valueFrom:
-                  secretKeyRef:
-                    name: talos-etcd-backup-secret
-                    key: cp-node
-                    optional: false
-              - name: TALOSCONFIG
-                value: /talosconfig/talosconfig
+                value: ""  # Change me to a Talos control plane node IP
             volumeMounts:
-              - name: talosconfig
-                mountPath: /talosconfig
-                readOnly: true
+              - name: talos-secrets
+                mountPath: /var/run/secrets/talos.dev
               - name: backupdata
-                mountPath: /data            
+                mountPath: /data
           containers:
           - name: restic
             image: restic/restic:latest
@@ -72,8 +65,16 @@ spec:
           volumes:
             - name: backupdata
               emptydir: {}
-            - name: talosconfig
+            - name: talos-secrets
               secret:
-                secretName: talos-etcd-backup-secret
-                optional: false
+                secretName: etcd-backup-talos-secrets
           restartPolicy: OnFailure
+---
+apiVersion: talos.dev/v1alpha1
+kind: ServiceAccount
+metadata:
+    name: etcd-backup-talos-secrets
+    namespace: kube-system
+spec:
+    roles:
+        - os:etcd:backup
