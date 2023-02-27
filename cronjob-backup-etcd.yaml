@@ -1,0 +1,79 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-backup
+  namespace: kube-system
+spec:
+  concurrencyPolicy: Forbid
+  schedule: "12 4 * * *"  # Change me if needed (04:12 daily)
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          initContainers:
+          - name: talosctl
+            image: ghcr.io/siderolabs/talosctl:v1.3.5
+            args:
+              - -n
+              - "$(CP_NODE_IP)"
+              - etcd
+              - snapshot
+              - /data/etcd.snapshot
+            env:
+              - name: CP_NODE_IP
+                valueFrom:
+                  secretKeyRef:
+                    name: talos-etcd-backup-secret
+                    key: cp-node
+                    optional: false
+              - name: TALOSCONFIG
+                value: /talosconfig/talosconfig
+            volumeMounts:
+              - name: talosconfig
+                mountPath: /talosconfig
+                readOnly: true
+              - name: backupdata
+                mountPath: /data            
+          containers:
+          - name: restic
+            image: restic/restic:latest
+            args:
+              - backup
+              - /data
+            env:
+              - name: RESTIC_REPOSITORY
+                valueFrom:
+                  secretKeyRef:
+                    name: talos-etcd-s3-keys
+                    key: bucketName
+                    optional: false
+              - name: RESTIC_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: talos-etcd-s3-keys
+                    key: resticKey
+                    optional: false
+              - name: AWS_ACCESS_KEY_ID
+                valueFrom:
+                  secretKeyRef:
+                    name: talos-etcd-s3-keys
+                    key: accessKeyId
+                    optional: false
+              - name: AWS_SECRET_ACCESS_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: talos-etcd-s3-keys
+                    key: secretAccessKey
+                    optional: false
+            volumeMounts:
+              - name: backupdata
+                mountPath: /data
+                readOnly: true
+          volumes:
+            - name: backupdata
+              emptydir: {}
+            - name: talosconfig
+              secret:
+                secretName: talos-etcd-backup-secret
+                optional: false
+          restartPolicy: OnFailure

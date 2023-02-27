@@ -1,0 +1,47 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-backup-prune
+  namespace: kube-system
+spec:
+  concurrencyPolicy: Forbid
+  schedule: "32 5 1 * *"  # change me - 1st of month at 05:32
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: restic
+            image: restic/restic:latest
+            args:
+              - forget
+              - --keep-last 7     # change me - set retention policy
+              - --keep-weekly 4   # see: https://restic.readthedocs.io/en/latest/060_forget.html
+              - --keep-monthly 12
+              - --prune
+            env:
+              - name: RESTIC_REPOSITORY
+                valueFrom:
+                  secretKeyRef:
+                    name: talos-etcd-s3-keys
+                    key: bucketName
+                    optional: false
+              - name: RESTIC_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: talos-etcd-s3-keys
+                    key: resticKey
+                    optional: false
+              - name: AWS_ACCESS_KEY_ID
+                valueFrom:
+                  secretKeyRef:
+                    name: talos-etcd-s3-keys
+                    key: accessKeyId
+                    optional: false
+              - name: AWS_SECRET_ACCESS_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: talos-etcd-s3-keys
+                    key: secretAccessKey
+                    optional: false
+          restartPolicy: OnFailure
