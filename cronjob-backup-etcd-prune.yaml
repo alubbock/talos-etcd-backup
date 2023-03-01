@@ -15,9 +15,9 @@ spec:
             image: restic/restic:latest
             args:
               - forget
-              - --keep-last 7     # change me - set retention policy
-              - --keep-weekly 4   # see: https://restic.readthedocs.io/en/latest/060_forget.html
-              - --keep-monthly 12
+              - --keep-last=7     # change me - set retention policy
+              - --keep-weekly=4   # see: https://restic.readthedocs.io/en/latest/060_forget.html
+              - --keep-monthly=12
               - --prune
             env:
               - name: RESTIC_REPOSITORY
