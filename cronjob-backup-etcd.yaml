@@ -32,6 +32,8 @@ spec:
             image: restic/restic:latest
             args:
               - backup
+              - --host
+              - kubernetes  # set a consistent hostname to avoid restic rescans
               - /data
             env:
               - name: RESTIC_REPOSITORY
